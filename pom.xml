@@ -6,7 +6,7 @@
 
     <groupId>groupId</groupId>
     <artifactId>validate_fasta_database</artifactId>
-    <version>0.2</version>
+    <version>1.0</version>
     <packaging>jar</packaging>
     <name>validate_fasta_database</name>
     <build>
