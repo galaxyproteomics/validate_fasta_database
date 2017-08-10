@@ -1,5 +1,6 @@
-# contents target directory
-target/
+# ignore contents of target directory, but not directory
+target/*
+!target/.keep
 
 # compiled class file
 *.class
