@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/FastaHeader.iml" filepath="$PROJECT_DIR$/FastaHeader.iml" />
+      <module fileurl="file://$PROJECT_DIR$/validate_fasta_database.iml" filepath="$PROJECT_DIR$/validate_fasta_database.iml" />
     </modules>
   </component>
 </project>

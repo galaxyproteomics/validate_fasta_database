@@ -6,11 +6,11 @@
         <sourceOutputDir name="target/generated-sources/annotations" />
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
-        <module name="FastaHeader" />
+        <module name="validate_fasta_database" />
       </profile>
     </annotationProcessing>
     <bytecodeTargetLevel>
-      <module name="FastaHeader" target="1.8" />
+      <module name="validate_fasta_database" target="1.7" />
     </bytecodeTargetLevel>
   </component>
 </project>
