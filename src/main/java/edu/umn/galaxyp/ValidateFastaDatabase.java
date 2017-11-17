@@ -4,6 +4,7 @@ import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.TreeSet;
 import java.util.logging.Logger;
 import java.nio.charset.StandardCharsets;
 
@@ -22,11 +23,15 @@ public class ValidateFastaDatabase {
     private MultiSet<Header.DatabaseType> databaseTypeMultiSet;
 
     // getters and setters
-    public MultiSet<Header.DatabaseType> getDatabaseTypeMultiSet() { return databaseTypeMultiSet; }
+    private MultiSet<Header.DatabaseType> getDatabaseTypeMultiSet() { return databaseTypeMultiSet; }
 
-    public void addDatabaseType(Header.DatabaseType value){
+    private void addDatabaseType(Header.DatabaseType value){
         this.databaseTypeMultiSet.add(value);
     }
+
+    // set of accessions, to keep track of duplicates
+    private TreeSet<String> accessionSet = new TreeSet<String>();
+
 
     // constructor
     public ValidateFastaDatabase(){
@@ -76,12 +81,18 @@ public class ValidateFastaDatabase {
         // minimum length, default 0
         int minimumLength = Integer.valueOf(args[7]);
 
+        // if true, only outputs FASTA entries with *unique* accession number.
+        // is ignored if checkHasAccession is false
+        boolean checkUniqueAccession = Boolean.valueOf(args[7]);
 
         vfd.readAndWriteFASTAHeader(fastaPath,
-                outGoodFASTA, outBadFASTA, crash_if_invalid,
+                outGoodFASTA, outBadFASTA,
+                crash_if_invalid,
                 checkIsProtein,
-                customLetters, checkHasAccession, minimumLength
-        );
+                customLetters,
+                checkHasAccession,
+                minimumLength,
+                checkUniqueAccession);
 
         System.out.println("Database Types");
         System.out.println(vfd.getDatabaseTypeMultiSet().toString());
@@ -94,6 +105,7 @@ public class ValidateFastaDatabase {
      * @param customLetters a string of only [A-Z] characters that contains any desired non-standard amino acids
      * @param checkHasAccession boolean; true indicates that only FASTA entries with accessions will pass
      * @param minimumLength integer; sequence must be strictly less than this value to pass.
+     * @param checkUniqueAccession boolean. true indicates that only FASTA entries with unique accessions will pass.
      */
 
     public void readAndWriteFASTAHeader(Path inPath,
@@ -103,7 +115,8 @@ public class ValidateFastaDatabase {
                                         boolean checkIsProtein,
                                         String customLetters,
                                         boolean checkHasAccession,
-                                        int minimumLength){
+                                        int minimumLength,
+                                        boolean checkUniqueAccession){
 
         StringBuilder sequence = new StringBuilder(); // allows us to append all sequences of line
 
@@ -117,11 +130,11 @@ public class ValidateFastaDatabase {
             // while there are still lines in the file
             while (line != null) {
                 // indicates FASTA header line
-                if (line.startsWith(">")){
+                if (line.startsWith(">")) {
                     String header = line + "\n";
 
                     // while there are still lines in the file and the next line is not a header
-                    while ((line = br.readLine()) != null && !line.startsWith(">")){
+                    while ((line = br.readLine()) != null && !line.startsWith(">")) {
                         sequence.append(line).append("\n");
                     }
 
@@ -138,6 +151,10 @@ public class ValidateFastaDatabase {
                     // accession checking
                     boolean passAccession = passAccession(checkHasAccession, current_record);
 
+                    // unique accession checking. only do it if checking for accession
+                    boolean passUniqueAccession = !checkHasAccession || passUniqueAccession(checkUniqueAccession, current_record);
+
+
                     // if is invalid FASTA header and was asked to fail, exit with status 1
                     if (!current_record.isValidFastaHeader() && crash_if_invalid) {
                         System.out.println("Invalid header detected. Exiting per user request.");
@@ -149,7 +166,8 @@ public class ValidateFastaDatabase {
                             current_record.isValidFastaHeader(),
                             passDnaOrRna,
                             passBelowMinimumLength,
-                            passAccession);
+                            passAccession,
+                            passUniqueAccession);
 
                     // empty the sequence builder to allow for appending the next sequence
                     sequence.setLength(0);
@@ -160,6 +178,34 @@ public class ValidateFastaDatabase {
             logger.severe("FASTA file not found: " + e.toString());
         }
     }
+
+
+    /**
+     * checks if we should filter out FASTA database entries without accession numbers
+     * @param checkUniqueAccession true if checking for a successful accession number parsing
+     * @param current_record FASTA database entry currently in memory
+     * @return true either if 1) we don't want to check for unique accession numbers or
+     *  2) sequence has a unique accession number
+     */
+    private boolean passUniqueAccession(boolean checkUniqueAccession,
+                                        FastaRecord current_record) {
+        boolean passUniqueAccession;
+        // if checkUniqueAccession is false, then passUniqueAccession should always be true
+        // nothing will be added to accessionSet if checkUniqueAccession is false
+        if (!checkUniqueAccession) {
+            passUniqueAccession = true;
+        } else {
+            String acc = current_record.getAccession();
+            boolean alreadyInAccessionSet = accessionSet.contains(acc);
+            // if already in accession set, don't pass the record
+            passUniqueAccession = !alreadyInAccessionSet;
+            if (!alreadyInAccessionSet) {
+                accessionSet.add(acc);
+            }
+        }
+        return passUniqueAccession;
+    }
+
 
     /**
      * checks if we should filter out FASTA database entries without accession numbers
@@ -225,11 +271,12 @@ public class ValidateFastaDatabase {
                                    boolean isValidHeader,
                                    boolean passDnaOrRna,
                                    boolean passBelowMinimumLength,
-                                   boolean passAccession) throws IOException {
+                                   boolean passAccession,
+                                   boolean passUniqueAccession) throws IOException {
         // Write to file
         // isDnaOrRna can only be true if checkIsProtein is true
         // same for checkLength
-        if (isValidHeader && passDnaOrRna && passBelowMinimumLength && passAccession) {
+        if (isValidHeader && passDnaOrRna && passBelowMinimumLength && passAccession && passUniqueAccession) {
             bwGood.write(header, 0, header.length());
             bwGood.write(sequence.toString(), 0, sequence.length());
         } else {

@@ -46,7 +46,8 @@ public class testFASTA {
                 false,
                 "",
                 false,
-                0);
+                0,
+                true);
     }
 
     // test that the reading and writing process works
@@ -72,7 +73,7 @@ public class testFASTA {
                 false,
                 "",
                 false,
-                0);
+                0, true);
 
         // read in files
         try {
@@ -202,6 +203,40 @@ public class testFASTA {
         ));
 
         assertEquals(aminoAcids, testSet.getAminoAcids());
+    }
+
+    @Test
+    public void testUniqueAccessions() {
+        Logger logger = Logger.getLogger("testUniqueAccessions");
+        ValidateFastaDatabase vfd = new ValidateFastaDatabase();
+
+        Path inPath = Paths.get("./src/test/java/edu/umn/galaxyp/goodAndBadFastaDups.fasta");
+
+        // files actually obtained from method
+        Path outPathGood = Paths.get("./src/test/java/edu/umn/galaxyp/fastaDupTest_obtained_GOOD.fasta");
+        Path outPathBad = Paths.get("./src/test/java/edu/umn/galaxyp/fastaDupTest_obtained_BAD.fasta");
+
+        // expected files
+        Path outPathGoodExpected = Paths.get("./src/test/java/edu/umn/galaxyp/goodFastaDups.fasta");
+
+        vfd.readAndWriteFASTAHeader(inPath,
+                outPathGood,
+                outPathBad,
+                false,
+                false,
+                "",
+                true,
+                0,
+                true);
+
+        // read in files
+        try {
+            byte[] expectedGood = Files.readAllBytes(outPathGoodExpected);
+            byte[] actualGood = Files.readAllBytes(outPathGood);
+            assertArrayEquals(expectedGood, actualGood);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 }
 
